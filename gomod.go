@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 )
@@ -36,10 +37,15 @@ type ModuleError struct {
 
 type Package struct {
 	List []*Module
+	std  bool
 }
 
 func (p *Package) Root() *Module {
 	return p.List[0]
+}
+
+func (p *Package) IsStd() bool {
+	return p.std
 }
 
 func (p *Package) Lookup(pkg string) (path string, dir string, found bool) {
@@ -74,14 +80,16 @@ func Load(dir string) (*Package, error) {
 	if err != nil {
 		return nil, err
 	}
-	// check std use vendor mod
+	// fix std use vendor mod
+	var std bool
 	if list[0].Path == "std" {
-		root := filepath.Join(list[0].Dir, "vendor")
-		for i := 1; i < len(list); i++ {
-			if list[i].Dir == "" {
+		if filepath.Join(runtime.GOROOT(), "src") == list[0].Dir {
+			std = true
+			root := filepath.Join(list[0].Dir, "vendor")
+			for i := 1; i < len(list); i++ {
 				list[i].Dir = filepath.Join(root, list[i].Path)
 			}
 		}
 	}
-	return &Package{List: list}, nil
+	return &Package{List: list, std: std}, nil
 }
