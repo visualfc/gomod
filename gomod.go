@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"go/build"
 	"os/exec"
 	"path/filepath"
 	"runtime"
@@ -37,6 +38,7 @@ type ModuleError struct {
 
 type Package struct {
 	List []*Module
+	ctx  *build.Context
 	std  bool
 }
 
@@ -46,6 +48,43 @@ func (p *Package) Root() *Module {
 
 func (p *Package) IsStd() bool {
 	return p.std
+}
+
+func (p *Package) DepImportList() (list []string) {
+	for i := 1; i < len(p.List); i++ {
+		list = append(list, p.List[i].Path)
+	}
+	return
+}
+
+func (p *Package) LocalImportList(skipcmd bool) []string {
+	dir := p.Root().Dir
+	var pkgs PathPkgsIndex
+	pkgs.LoadIndex(*p.ctx, dir)
+	pkgs.Sort()
+	var ar []string
+	if p.std {
+		for _, index := range pkgs.Indexs {
+			for _, pkg := range index.Pkgs {
+				if skipcmd && pkg.IsCommand() {
+					continue
+				}
+				ar = append(ar, pkg.ImportPath)
+			}
+		}
+	} else {
+		path := p.Root().Path
+		for _, index := range pkgs.Indexs {
+			for _, pkg := range index.Pkgs {
+				if pkg.IsCommand() {
+					continue
+				}
+				dir := filepath.Join(path, pkg.Dir[len(dir):])
+				ar = append(ar, filepath.ToSlash(dir))
+			}
+		}
+	}
+	return ar
 }
 
 func (p *Package) Lookup(pkg string) (path string, dir string, found bool) {
@@ -62,7 +101,7 @@ func (p *Package) Lookup(pkg string) (path string, dir string, found bool) {
 	return "", "", false
 }
 
-func Load(dir string) (*Package, error) {
+func Load(dir string, ctx *build.Context) (*Package, error) {
 	var stdout, stderr bytes.Buffer
 	stdout.WriteByte('[')
 	cmd := exec.Command("go", "list", "-m", "-mod=readonly", "-json", "all")
@@ -91,5 +130,5 @@ func Load(dir string) (*Package, error) {
 			}
 		}
 	}
-	return &Package{List: list, std: std}, nil
+	return &Package{List: list, ctx: ctx, std: std}, nil
 }

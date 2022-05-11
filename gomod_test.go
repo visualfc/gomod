@@ -1,6 +1,7 @@
 package gomod
 
 import (
+	"go/build"
 	"path/filepath"
 	"runtime"
 	"testing"
@@ -8,7 +9,7 @@ import (
 
 func TestStd(t *testing.T) {
 	goroot := runtime.GOROOT()
-	pkg, err := Load(filepath.Join(goroot, "src/net"))
+	pkg, err := Load(filepath.Join(goroot, "src/net"), &build.Default)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -24,5 +25,11 @@ func TestStd(t *testing.T) {
 	}
 	if dir != filepath.Join(goroot, "src/vendor/golang.org/x/net/dns/dnsmessage") {
 		t.Fatal(dir)
+	}
+	for _, dep := range pkg.DepImportList() {
+		t.Log(dep)
+	}
+	for _, im := range pkg.LocalImportList(true) {
+		t.Log(im)
 	}
 }
