@@ -93,7 +93,6 @@ func (p *Package) LocalImportList(skipcmd bool) []string {
 				if skipcmd && pkg.IsCommand() {
 					continue
 				}
-				ar = append(ar, pkg.ImportPath)
 				dir := filepath.Join(path, pkg.Dir[len(dir):])
 				ar = append(ar, filepath.ToSlash(dir))
 			}
