@@ -139,7 +139,6 @@ func (p *PkgsIndex) loadPkgsPath(wg *sync.WaitGroup, root, pkgrelpath string) {
 			if buildPkg.ImportPath == "." {
 				buildPkg.ImportPath = filepath.ToSlash(pkgrelpath)
 				buildPkg.Root = root
-				buildPkg.Goroot = true
 			}
 			p.Lock()
 			p.Pkgs = append(p.Pkgs, buildPkg)

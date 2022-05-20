@@ -50,9 +50,24 @@ func (p *Package) IsStd() bool {
 	return p.std
 }
 
-func (p *Package) DepImportList() (list []string) {
+func (p *Package) DepImportList(skipcmd bool, chkmodsub bool) (list []string) {
 	for i := 1; i < len(p.List); i++ {
 		list = append(list, p.List[i].Path)
+		if chkmodsub {
+			dir := p.List[i].Dir
+			path := p.List[i].Path
+			var pkgs PathPkgsIndex
+			pkgs.LoadIndex(*p.ctx, p.List[i].Dir)
+			for _, index := range pkgs.Indexs {
+				for _, pkg := range index.Pkgs {
+					if skipcmd && pkg.IsCommand() {
+						continue
+					}
+					dir := filepath.Join(path, pkg.Dir[len(dir):])
+					list = append(list, filepath.ToSlash(dir))
+				}
+			}
+		}
 	}
 	return
 }
@@ -61,7 +76,6 @@ func (p *Package) LocalImportList(skipcmd bool) []string {
 	dir := p.Root().Dir
 	var pkgs PathPkgsIndex
 	pkgs.LoadIndex(*p.ctx, dir)
-	pkgs.Sort()
 	var ar []string
 	if p.std {
 		for _, index := range pkgs.Indexs {
@@ -76,9 +90,10 @@ func (p *Package) LocalImportList(skipcmd bool) []string {
 		path := p.Root().Path
 		for _, index := range pkgs.Indexs {
 			for _, pkg := range index.Pkgs {
-				if pkg.IsCommand() {
+				if skipcmd && pkg.IsCommand() {
 					continue
 				}
+				ar = append(ar, pkg.ImportPath)
 				dir := filepath.Join(path, pkg.Dir[len(dir):])
 				ar = append(ar, filepath.ToSlash(dir))
 			}
