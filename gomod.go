@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"sort"
 	"strings"
 	"time"
 )
@@ -107,12 +108,26 @@ func (p *Package) Lookup(pkg string) (path string, dir string, found bool) {
 			return v.Path, v.Dir, true
 		}
 	}
+	var list []*Module
 	for _, v := range p.List {
 		if strings.HasPrefix(pkg, v.Path+"/") {
-			return pkg, filepath.Join(v.Dir, pkg[len(v.Path+"/"):]), true
+			list = append(list, v)
 		}
 	}
-	return "", "", false
+	switch len(list) {
+	case 0:
+		return "", "", false
+	case 1:
+		v := list[0]
+		return pkg, filepath.Join(v.Dir, pkg[len(v.Path+"/"):]), true
+	default:
+		// check path/v2
+		sort.Slice(list, func(i, j int) bool {
+			return list[i].Path > list[j].Path
+		})
+		v := list[0]
+		return pkg, filepath.Join(v.Dir, pkg[len(v.Path+"/"):]), true
+	}
 }
 
 func Load(dir string, ctx *build.Context) (*Package, error) {
